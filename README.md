@@ -9,6 +9,7 @@ N-API C-bindings for [libuiohook](https://github.com/kwhat/libuiohook).
 
 ```typescript
 import { uIOhook, UiohookKey } from 'electron-uiohook'
+import { clipboard } = from 'electron'
 
 uIOhook.on('keydown', (e) => {
   if (e.keycode === UiohookKey.Q) {
@@ -21,6 +22,14 @@ uIOhook.on('keydown', (e) => {
 })
 
 uIOhook.start()
+
+// clipboard watcher
+uIOhook.on('clipboardChanged', () => {
+  console.log('clipboard changed', clipboard.readText())
+})
+
+uIOhook.startListenClipboard()
+
 ```
 
 ### API

@@ -304,7 +304,7 @@ class UiohookNapi extends EventEmitter {
   
       lib.setClipboardListener(hWnd, () => {
           console.log('clipboard changed:');
-          this.emit('clipboarChanged')
+          this.emit('clipboardChanged')
       });
   
       win.on('close', () => {
@@ -339,7 +339,7 @@ class UiohookNapi extends EventEmitter {
       screen.on('display-removed', moveWindowOutOfScreen);
       screen.on('display-metrics-changed', moveWindowOutOfScreen);
 
-      // moveWindowOutOfScreen();
+      moveWindowOutOfScreen();
     }    
   }
   stopListenClipboard () {
