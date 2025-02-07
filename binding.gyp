@@ -7,6 +7,7 @@
         'src/lib/addon.c',
         'src/lib/napi_helpers.c',
         'src/lib/uiohook_worker.c',
+        'src/lib/clipboard_listener.c'
       ],
       'include_dirs': [
         'libuiohook/include',

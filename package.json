@@ -22,7 +22,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "install": "node-gyp-build",
-    "prebuild": "prebuildify --napi",
+    "prebuild": "prebuildify --napi --target 16.17.1  --arch ia32",
     "build-ts": "tsc",
     "demo": "ts-node src/demo.ts",
     "make-libuiohook-patch": "git -C ./libuiohook diff --cached > ./src/libuiohook.patch",
@@ -40,7 +40,11 @@
     "@types/node": "16.x.x",
     "prebuildify": "5.x.x",
     "ts-node": "10.x.x",
-    "typescript": "4.x.x"
+    "typescript": "4.x.x",
+    "electron": "21.4.4"
+  },
+  "peerDependencies": {
+    "electron": ">=14"
   },
   "dependencies": {
     "node-gyp-build": "4.x.x"

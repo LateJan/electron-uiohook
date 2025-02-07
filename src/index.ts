@@ -1,10 +1,22 @@
 import { EventEmitter } from 'events'
 import { join } from 'path'
+import { app, BrowserWindow, screen } from 'electron';
+import { ipcMain } from 'electron/main';
 const lib: AddonExports = require('node-gyp-build')(join(__dirname, '..'))
+let win: BrowserWindow | null;
 
 interface AddonExports {
-  start(cb: (e: any) => void): void
-  stop(): void
+  start (cb: (e: any) => void): void
+  stop (): void
+  keyTap (key: number, type: KeyToggle): void
+  setClipboardListener(hWnd: Buffer, callback: () => void): void;
+  removeClipboardListener(hWnd: Buffer): void;
+}
+
+enum KeyToggle {
+  Tap = 0,
+  Down = 1,
+  Up = 2
 }
 
 export enum EventType {
@@ -19,6 +31,7 @@ export enum EventType {
 
 export interface UiohookKeyboardEvent {
   type: EventType.EVENT_KEY_PRESSED | EventType.EVENT_KEY_RELEASED
+  time: number
   altKey: boolean
   ctrlKey: boolean
   metaKey: boolean
@@ -31,6 +44,7 @@ export interface UiohookMouseEvent {
     EventType.EVENT_MOUSE_MOVED |
     EventType.EVENT_MOUSE_PRESSED |
     EventType.EVENT_MOUSE_RELEASED
+  time: number
   altKey: boolean
   ctrlKey: boolean
   metaKey: boolean
@@ -43,6 +57,7 @@ export interface UiohookMouseEvent {
 
 export interface UiohookWheelEvent {
   type: EventType.EVENT_MOUSE_WHEEL
+  time: number
   altKey: boolean
   ctrlKey: boolean
   metaKey: boolean
@@ -128,6 +143,17 @@ export const UiohookKey = {
   NumpadSubtract: 0x004A,
   NumpadDecimal: 0x0053,
   NumpadDivide: 0x0E35,
+  NumpadEnter: 0x0E00 | 0x001C,
+  NumpadEnd: 0xEE00 | 0x004F,
+  NumpadArrowDown: 0xEE00 | 0x0050,
+  NumpadPageDown: 0xEE00 | 0x0051,
+  NumpadArrowLeft: 0xEE00 | 0x004B,
+  NumpadArrowRight: 0xEE00 | 0x004D,
+  NumpadHome: 0xEE00 | 0x0047,
+  NumpadArrowUp: 0xEE00 | 0x0048,
+  NumpadPageUp: 0xEE00 | 0x0049,
+  NumpadInsert: 0xEE00 | 0x0052,
+  NumpadDelete: 0xEE00 | 0x0053,
   F1: 0x003B,
   F2: 0x003C,
   F3: 0x003D,
@@ -170,7 +196,10 @@ export const UiohookKey = {
   Shift: 0x002A, // Left
   ShiftRight: 0x0036,
   Meta: 0x0E5B,
-  MetaRight: 0x0E5C
+  MetaRight: 0x0E5C,
+  NumLock: 0x0045,
+  ScrollLock: 0x0046,
+  PrintScreen: 0x0E37,
 } as const
 
 declare interface UiohookNapi {
@@ -189,7 +218,8 @@ declare interface UiohookNapi {
 
 class UiohookNapi extends EventEmitter {
   private handler (e: UiohookKeyboardEvent | UiohookMouseEvent | UiohookWheelEvent) {
-    this.emit('input', e)
+    this.emit('input', e) 
+    if (win) win.webContents.send('UioHookApi:input', e)
     switch (e.type) {
       case EventType.EVENT_KEY_PRESSED:
         this.emit('keydown', e)
@@ -221,6 +251,101 @@ class UiohookNapi extends EventEmitter {
 
   stop () {
     lib.stop()
+  }
+
+  keyTap (key: number, modifiers: number[] = []) {
+    if (!modifiers.length) {
+      lib.keyTap(key, KeyToggle.Tap)
+      return
+    }
+
+    for (const modKey of modifiers) {
+      lib.keyTap(modKey, KeyToggle.Down)
+    }
+    lib.keyTap(key, KeyToggle.Tap)
+    let i = modifiers.length
+    while (i--) {
+      lib.keyTap(modifiers[i], KeyToggle.Up)
+    }
+  }
+
+  keyToggle (key: number, toggle: 'down' | 'up') {
+    lib.keyTap(key, (toggle === 'down' ? KeyToggle.Down : KeyToggle.Up))
+  }
+
+  startListenClipboard () {
+    if (!win) {
+      win = new BrowserWindow({
+        show: true,
+        width: 360,
+        height: 270,
+        transparent: true,
+        frame: false,
+        hasShadow: false,
+        skipTaskbar: true,
+        fullscreen: false,
+        alwaysOnTop: false,
+        webPreferences: { 
+          nodeIntegration: true,
+          preload: require.resolve('./preload.js'), }
+      });
+
+      win.removeMenu();
+      win.setIgnoreMouseEvents(true, { forward: true });
+      win.webContents.setAudioMuted(true);
+      win.loadURL(
+        `file://${require.resolve('./ClipboardWatcher.html')}`,
+      ).then(() => {
+        !app.isPackaged && win && win.webContents.openDevTools({ mode: 'detach' });
+      });
+
+
+      const hWnd: Buffer = win.getNativeWindowHandle();
+  
+      lib.setClipboardListener(hWnd, () => {
+          console.log('clipboard changed:');
+          this.emit('clipboarChanged')
+      });
+  
+      win.on('close', () => {
+          if (hWnd) {
+            lib.removeClipboardListener(hWnd);
+          }
+          win = null;
+      });
+
+      const moveWindowOutOfScreen = () => {
+        const displays = screen.getAllDisplays();
+        let maxX = 0;
+        let maxY = 0;
+      
+        displays.forEach((display) => {
+          const { x, y, width, height } = display.bounds;
+          maxX = Math.max(maxX, x + width);
+          maxY = Math.max(maxY, y + height);
+        });
+      
+        if (win) {
+          win.setBounds({
+            x: maxX + 100,
+            y: maxY + 100,
+            width: 360,
+            height: 270
+          });
+        }      
+      }
+
+      screen.on('display-added', moveWindowOutOfScreen);
+      screen.on('display-removed', moveWindowOutOfScreen);
+      screen.on('display-metrics-changed', moveWindowOutOfScreen);
+
+      // moveWindowOutOfScreen();
+    }    
+  }
+  stopListenClipboard () {
+    if (win) {
+      win.close();
+    }
   }
 }
 

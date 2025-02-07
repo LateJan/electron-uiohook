@@ -4,6 +4,7 @@
 #include <uiohook.h>
 #include "napi_helpers.h"
 #include "uiohook_worker.h"
+#include "clipboard_listener.h"
 
 static napi_threadsafe_function threadsafe_fn = NULL;
 static bool is_worker_running = false;
@@ -13,6 +14,9 @@ void dispatch_proc(uiohook_event* const event) {
 
   uiohook_event* copied_event = malloc(sizeof(uiohook_event));
   memcpy(copied_event, event, sizeof(uiohook_event));
+  if (copied_event->type == EVENT_MOUSE_DRAGGED) {
+    copied_event->type = EVENT_MOUSE_MOVED;
+  }
 
   napi_status status = napi_call_threadsafe_function(threadsafe_fn, copied_event, napi_tsfn_nonblocking);
   if (status == napi_closing) {
@@ -50,6 +54,10 @@ napi_value uiohook_to_js_event(napi_env env, uiohook_event* event) {
   status = napi_get_boolean(env, (event->mask & (MASK_SHIFT)), &e_shiftKey);
   NAPI_FATAL_IF_FAILED(status, "uiohook_to_js_event", "napi_get_boolean");
 
+  napi_value e_time;
+  status = napi_create_double(env, (double)event->time, &e_time);
+  NAPI_FATAL_IF_FAILED(status, "uiohook_to_js_event", "napi_create_double");
+
   if (event->type == EVENT_KEY_PRESSED || event->type == EVENT_KEY_RELEASED) {
     napi_value e_keycode;
     status = napi_create_uint32(env, event->data.keyboard.keycode, &e_keycode);
@@ -57,6 +65,7 @@ napi_value uiohook_to_js_event(napi_env env, uiohook_event* event) {
 
     napi_property_descriptor descriptors[] = {
       { "type",     NULL, NULL, NULL, NULL, e_type,     napi_enumerable, NULL },
+      { "time",     NULL, NULL, NULL, NULL, e_time,     napi_enumerable, NULL },
       { "altKey",   NULL, NULL, NULL, NULL, e_altKey,   napi_enumerable, NULL },
       { "ctrlKey",  NULL, NULL, NULL, NULL, e_ctrlKey,  napi_enumerable, NULL },
       { "metaKey",  NULL, NULL, NULL, NULL, e_metaKey,  napi_enumerable, NULL },
@@ -86,6 +95,7 @@ napi_value uiohook_to_js_event(napi_env env, uiohook_event* event) {
 
     napi_property_descriptor descriptors[] = {
       { "type",     NULL, NULL, NULL, NULL, e_type,     napi_enumerable, NULL },
+      { "time",     NULL, NULL, NULL, NULL, e_time,     napi_enumerable, NULL },
       { "altKey",   NULL, NULL, NULL, NULL, e_altKey,   napi_enumerable, NULL },
       { "ctrlKey",  NULL, NULL, NULL, NULL, e_ctrlKey,  napi_enumerable, NULL },
       { "metaKey",  NULL, NULL, NULL, NULL, e_metaKey,  napi_enumerable, NULL },
@@ -126,6 +136,7 @@ napi_value uiohook_to_js_event(napi_env env, uiohook_event* event) {
 
     napi_property_descriptor descriptors[] = {
       { "type",      NULL, NULL, NULL, NULL, e_type,      napi_enumerable, NULL },
+      { "time",      NULL, NULL, NULL, NULL, e_time,      napi_enumerable, NULL },
       { "altKey",    NULL, NULL, NULL, NULL, e_altKey,    napi_enumerable, NULL },
       { "ctrlKey",   NULL, NULL, NULL, NULL, e_ctrlKey,   napi_enumerable, NULL },
       { "metaKey",   NULL, NULL, NULL, NULL, e_metaKey,   napi_enumerable, NULL },
@@ -188,7 +199,7 @@ napi_value AddonStart(napi_env env, napi_callback_info info) {
   NAPI_THROW_IF_FAILED(env, status, NULL);
 
   int worker_status = uiohook_worker_start(dispatch_proc);
-  
+
   if (worker_status != UIOHOOK_SUCCESS) {
     napi_release_threadsafe_function(threadsafe_fn, napi_tsfn_release);
     threadsafe_fn = NULL;
@@ -260,6 +271,47 @@ void AddonCleanUp (void* arg) {
   }
 }
 
+typedef enum {
+  key_tap,
+  key_down,
+  key_up,
+  force_uint = 0xFFFFFFFF
+} key_tap_type;
+
+napi_value AddonKeyTap (napi_env env, napi_callback_info info) {
+  napi_status status;
+
+  size_t info_argc = 2;
+  napi_value info_argv[2];
+  status = napi_get_cb_info(env, info, &info_argc, info_argv, NULL, NULL);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+
+  // [0] KeyCode
+  uint32_t keycode;
+  status = napi_get_value_uint32(env, info_argv[0], &keycode);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+
+  // [1] KeyTapType
+  key_tap_type tap_type;
+  status = napi_get_value_uint32(env, info_argv[1], (int32_t*)&tap_type);
+  NAPI_THROW_IF_FAILED(env, status, NULL);
+
+  uiohook_event event;
+  memset(&event, 0, sizeof(event));
+  event.data.keyboard.keycode = keycode;
+
+  if (tap_type != key_up) {
+    event.type = EVENT_KEY_PRESSED;
+    hook_post_event(&event);
+  }
+  if (tap_type != key_down) {
+    event.type = EVENT_KEY_RELEASED;
+    hook_post_event(&event);
+  }
+
+  return NULL;
+}
+
 NAPI_MODULE_INIT() {
   napi_status status;
   napi_value export_fn;
@@ -272,6 +324,22 @@ NAPI_MODULE_INIT() {
   status = napi_create_function(env, NULL, 0, AddonStop, NULL, &export_fn);
   NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
   status = napi_set_named_property(env, exports, "stop", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, AddonKeyTap, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "keyTap", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+
+  status = napi_create_function(env, NULL, 0, SetClipboardListener, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "setClipboardListener", export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
+
+  status = napi_create_function(env, NULL, 0, RemoveClipboardListener, NULL, &export_fn);
+  NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_create_function");
+  status = napi_set_named_property(env, exports, "removeClipboardListener", export_fn);
   NAPI_FATAL_IF_FAILED(status, "NAPI_MODULE_INIT", "napi_set_named_property");
 
   status = napi_add_env_cleanup_hook(env, AddonCleanUp, NULL);
