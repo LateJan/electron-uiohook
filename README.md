@@ -9,7 +9,7 @@ N-API C-bindings for [libuiohook](https://github.com/kwhat/libuiohook).
 
 ```typescript
 import { uIOhook, UiohookKey } from 'electron-uiohook'
-import { clipboard } = from 'electron'
+import { clipboard } from 'electron'
 
 uIOhook.on('keydown', (e) => {
   if (e.keycode === UiohookKey.Q) {
