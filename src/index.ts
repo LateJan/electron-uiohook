@@ -295,8 +295,6 @@ class UiohookNapi extends EventEmitter {
       win.removeMenu();
       win.setIgnoreMouseEvents(true, { forward: true });
       win.webContents.setAudioMuted(true);
-      win.loadURL(`file://${require.resolve('./ClipboardWatcher.html')}`,
-      )
 
       const hWnd: Buffer = win.getNativeWindowHandle();
   
@@ -340,7 +338,7 @@ class UiohookNapi extends EventEmitter {
     }    
   }
   stopListenClipboard () {
-    if (win) {
+    if (win && !win.isDestroyed()) {
       win.close();
     }
   }
