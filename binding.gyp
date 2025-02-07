@@ -6,8 +6,7 @@
       'sources': [
         'src/lib/addon.c',
         'src/lib/napi_helpers.c',
-        'src/lib/uiohook_worker.c',
-        'src/lib/clipboard_listener.c'
+        'src/lib/uiohook_worker.c'
       ],
       'include_dirs': [
         'libuiohook/include',
@@ -30,7 +29,8 @@
             'libuiohook/src/windows/input_helper.c',
             'libuiohook/src/windows/input_hook.c',
             'libuiohook/src/windows/post_event.c',
-            'libuiohook/src/windows/system_properties.c'
+            'libuiohook/src/windows/system_properties.c',
+            'src/lib/clipboard_listener_win.c'
           ],
           'include_dirs': [
             'libuiohook/src/windows'
@@ -50,7 +50,8 @@
             'libuiohook/src/x11/input_helper.c',
             'libuiohook/src/x11/input_hook.c',
             'libuiohook/src/x11/post_event.c',
-            'libuiohook/src/x11/system_properties.c'
+            'libuiohook/src/x11/system_properties.c',
+            'src/lib/clipboard_listener_linux.c'
           ],
           'include_dirs': [
             'libuiohook/src/x11'
@@ -74,7 +75,8 @@
             "libuiohook/src/darwin/input_helper.c",
             "libuiohook/src/darwin/input_hook.c",
             "libuiohook/src/darwin/post_event.c",
-            "libuiohook/src/darwin/system_properties.c"
+            "libuiohook/src/darwin/system_properties.c",
+            'src/lib/clipboard_listener_mac.c'
           ],
           'include_dirs': [
             'libuiohook/src/darwin'

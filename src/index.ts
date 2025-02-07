@@ -214,6 +214,8 @@ declare interface UiohookNapi {
   on(event: 'click', listener: (e: UiohookMouseEvent) => void): this
 
   on(event: 'wheel', listener: (e: UiohookWheelEvent) => void): this
+
+  on(event: 'clipboardChanged', listener: () => void): this
 }
 
 class UiohookNapi extends EventEmitter {
@@ -293,17 +295,12 @@ class UiohookNapi extends EventEmitter {
       win.removeMenu();
       win.setIgnoreMouseEvents(true, { forward: true });
       win.webContents.setAudioMuted(true);
-      win.loadURL(
-        `file://${require.resolve('./ClipboardWatcher.html')}`,
-      ).then(() => {
-        !app.isPackaged && win && win.webContents.openDevTools({ mode: 'detach' });
-      });
-
+      win.loadURL(`file://${require.resolve('./ClipboardWatcher.html')}`,
+      )
 
       const hWnd: Buffer = win.getNativeWindowHandle();
   
       lib.setClipboardListener(hWnd, () => {
-          console.log('clipboard changed:');
           this.emit('clipboardChanged')
       });
   

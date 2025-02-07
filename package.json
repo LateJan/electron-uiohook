@@ -22,7 +22,7 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "install": "node-gyp-build",
-    "prebuild": "prebuildify --napi --target 16.17.1  --arch ia32",
+    "prebuild": "prebuildify --napi",
     "build-ts": "tsc",
     "demo": "ts-node src/demo.ts",
     "make-libuiohook-patch": "git -C ./libuiohook diff --cached > ./src/libuiohook.patch",
