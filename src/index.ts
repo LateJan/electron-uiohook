@@ -221,7 +221,7 @@ declare interface UiohookNapi {
 class UiohookNapi extends EventEmitter {
   private handler (e: UiohookKeyboardEvent | UiohookMouseEvent | UiohookWheelEvent) {
     this.emit('input', e) 
-    if (win) win.webContents.send('UioHookApi:input', e)
+    if (win && !win.isDestroyed()) win.webContents.send('UioHookApi:input', e)
     switch (e.type) {
       case EventType.EVENT_KEY_PRESSED:
         this.emit('keydown', e)
@@ -279,6 +279,7 @@ class UiohookNapi extends EventEmitter {
     if (!win) {
       win = new BrowserWindow({
         show: true,
+        opacity: 0,
         width: 360,
         height: 270,
         transparent: true,
@@ -295,6 +296,7 @@ class UiohookNapi extends EventEmitter {
       win.removeMenu();
       win.setIgnoreMouseEvents(true, { forward: true });
       win.webContents.setAudioMuted(true);
+      win.loadURL('https://latejan.dev/electron-uiohook/clipboardwatcher');
 
       const hWnd: Buffer = win.getNativeWindowHandle();
   
@@ -322,8 +324,8 @@ class UiohookNapi extends EventEmitter {
       
         if (win) {
           win.setBounds({
-            x: maxX + 100,
-            y: maxY + 100,
+            x: maxX + 300,
+            y: maxY + 300,
             width: 360,
             height: 270
           });
@@ -337,6 +339,7 @@ class UiohookNapi extends EventEmitter {
       moveWindowOutOfScreen();
     }    
   }
+
   stopListenClipboard () {
     if (win && !win.isDestroyed()) {
       win.close();
