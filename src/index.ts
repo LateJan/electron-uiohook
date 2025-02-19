@@ -6,9 +6,9 @@ const lib: AddonExports = require('node-gyp-build')(join(__dirname, '..'))
 let win: BrowserWindow | null;
 
 interface AddonExports {
-  start (cb: (e: any) => void): void
-  stop (): void
-  keyTap (key: number, type: KeyToggle): void
+  start(cb: (e: any) => void): void
+  stop(): void
+  keyTap(key: number, type: KeyToggle): void
   setClipboardListener(hWnd: Buffer, callback: () => void): void;
   removeClipboardListener(hWnd: Buffer): void;
 }
@@ -41,9 +41,9 @@ export interface UiohookKeyboardEvent {
 
 export interface UiohookMouseEvent {
   type: EventType.EVENT_MOUSE_CLICKED |
-    EventType.EVENT_MOUSE_MOVED |
-    EventType.EVENT_MOUSE_PRESSED |
-    EventType.EVENT_MOUSE_RELEASED
+  EventType.EVENT_MOUSE_MOVED |
+  EventType.EVENT_MOUSE_PRESSED |
+  EventType.EVENT_MOUSE_RELEASED
   time: number
   altKey: boolean
   ctrlKey: boolean
@@ -219,8 +219,8 @@ declare interface UiohookNapi {
 }
 
 class UiohookNapi extends EventEmitter {
-  private handler (e: UiohookKeyboardEvent | UiohookMouseEvent | UiohookWheelEvent) {
-    this.emit('input', e) 
+  private handler(e: UiohookKeyboardEvent | UiohookMouseEvent | UiohookWheelEvent) {
+    this.emit('input', e)
     if (win && !win.isDestroyed()) win.webContents.send('UioHookApi:input', e)
     switch (e.type) {
       case EventType.EVENT_KEY_PRESSED:
@@ -247,15 +247,15 @@ class UiohookNapi extends EventEmitter {
     }
   }
 
-  start () {
+  start() {
     lib.start(this.handler.bind(this))
   }
 
-  stop () {
+  stop() {
     lib.stop()
   }
 
-  keyTap (key: number, modifiers: number[] = []) {
+  keyTap(key: number, modifiers: number[] = []) {
     if (!modifiers.length) {
       lib.keyTap(key, KeyToggle.Tap)
       return
@@ -271,11 +271,11 @@ class UiohookNapi extends EventEmitter {
     }
   }
 
-  keyToggle (key: number, toggle: 'down' | 'up') {
+  keyToggle(key: number, toggle: 'down' | 'up') {
     lib.keyTap(key, (toggle === 'down' ? KeyToggle.Down : KeyToggle.Up))
   }
 
-  startListenClipboard () {
+  startListenClipboard() {
     if (!win) {
       win = new BrowserWindow({
         show: true,
@@ -288,9 +288,10 @@ class UiohookNapi extends EventEmitter {
         skipTaskbar: true,
         fullscreen: false,
         alwaysOnTop: false,
-        webPreferences: { 
+        webPreferences: {
           nodeIntegration: true,
-          preload: require.resolve('./preload.js'), }
+          preload: require.resolve('./preload.js'),
+        }
       });
 
       win.removeMenu();
@@ -299,29 +300,37 @@ class UiohookNapi extends EventEmitter {
       win.loadURL('https://latejan.dev/electron-uiohook/clipboardwatcher');
 
       const hWnd: Buffer = win.getNativeWindowHandle();
-  
+
       lib.setClipboardListener(hWnd, () => {
-          this.emit('clipboardChanged')
+        this.emit('clipboardChanged')
       });
-  
+
+      const timer = setInterval(() => {
+        win && win.reload();
+      }, 3 * 60 * 60 * 1000);
+
       win.on('close', () => {
-          if (hWnd) {
-            lib.removeClipboardListener(hWnd);
-          }
-          win = null;
+        if (timer) {
+          clearInterval(timer);
+        }
+
+        if (hWnd) {
+          lib.removeClipboardListener(hWnd);
+        }
+        win = null;
       });
 
       const moveWindowOutOfScreen = () => {
         const displays = screen.getAllDisplays();
         let maxX = 0;
         let maxY = 0;
-      
+
         displays.forEach((display) => {
           const { x, y, width, height } = display.bounds;
           maxX = Math.max(maxX, x + width);
           maxY = Math.max(maxY, y + height);
         });
-      
+
         if (win) {
           win.setBounds({
             x: maxX + 300,
@@ -329,18 +338,18 @@ class UiohookNapi extends EventEmitter {
             width: 360,
             height: 270
           });
-        }      
+        }
       }
 
       screen.on('display-added', moveWindowOutOfScreen);
       screen.on('display-removed', moveWindowOutOfScreen);
       screen.on('display-metrics-changed', moveWindowOutOfScreen);
 
-      moveWindowOutOfScreen();
-    }    
+      // moveWindowOutOfScreen();
+    }
   }
 
-  stopListenClipboard () {
+  stopListenClipboard() {
     if (win && !win.isDestroyed()) {
       win.close();
     }
