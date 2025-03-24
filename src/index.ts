@@ -345,7 +345,7 @@ class UiohookNapi extends EventEmitter {
       screen.on('display-removed', moveWindowOutOfScreen);
       screen.on('display-metrics-changed', moveWindowOutOfScreen);
 
-      // moveWindowOutOfScreen();
+      moveWindowOutOfScreen();
     }
   }
 
