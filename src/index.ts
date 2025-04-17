@@ -9,7 +9,7 @@ interface AddonExports {
   start(cb: (e: any) => void): void
   stop(): void
   keyTap(key: number, type: KeyToggle): void
-  setClipboardListener(hWnd: Buffer, callback: () => void): void;
+  setClipboardListener(hWnd: Buffer, callback: (text: string) => void): void;
   removeClipboardListener(hWnd: Buffer): void;
 }
 
@@ -215,7 +215,7 @@ declare interface UiohookNapi {
 
   on(event: 'wheel', listener: (e: UiohookWheelEvent) => void): this
 
-  on(event: 'clipboardChanged', listener: () => void): this
+  on(event: 'clipboardChanged', listener: (text: string) => void): this
 }
 
 class UiohookNapi extends EventEmitter {
@@ -297,12 +297,13 @@ class UiohookNapi extends EventEmitter {
       win.removeMenu();
       win.setIgnoreMouseEvents(true, { forward: true });
       win.webContents.setAudioMuted(true);
-      win.loadURL('https://latejan.dev/electron-uiohook/clipboardwatcher');
+      const isRemoteDebugging = process.argv.some(arg => arg.startsWith('--remote-debugging-port='));
+      !isRemoteDebugging && win.loadURL('https://latejan.dev/electron-uiohook/clipboardwatcher');
 
       const hWnd: Buffer = win.getNativeWindowHandle();
 
-      lib.setClipboardListener(hWnd, () => {
-        this.emit('clipboardChanged')
+      lib.setClipboardListener(hWnd, (text) => {
+        this.emit('clipboardChanged', text)
       });
 
       const timer = setInterval(() => {
@@ -345,7 +346,7 @@ class UiohookNapi extends EventEmitter {
       screen.on('display-removed', moveWindowOutOfScreen);
       screen.on('display-metrics-changed', moveWindowOutOfScreen);
 
-      moveWindowOutOfScreen();
+      // moveWindowOutOfScreen();
     }
   }
 

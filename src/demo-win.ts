@@ -22,8 +22,8 @@ app.whenReady().then(() => {
 
     win.loadURL("https://www.baidu.com");
 
-    uIOhook.on('clipboardChanged', () => {
-      console.log('clipboard changed:', clipboard.readText())
+    uIOhook.on('clipboardChanged', (text) => {
+      console.log('clipboard changed:', clipboard.readText(), '      ', text);
     })
     
       uIOhook.start()

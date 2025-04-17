@@ -30,7 +30,7 @@
             'libuiohook/src/windows/input_hook.c',
             'libuiohook/src/windows/post_event.c',
             'libuiohook/src/windows/system_properties.c',
-            'src/lib/clipboard_listener_win.c'
+            'src/lib/clipboard_listener_win.cpp'
           ],
           'include_dirs': [
             'libuiohook/src/windows'
@@ -51,7 +51,7 @@
             'libuiohook/src/x11/input_hook.c',
             'libuiohook/src/x11/post_event.c',
             'libuiohook/src/x11/system_properties.c',
-            'src/lib/clipboard_listener_linux.c'
+            'src/lib/clipboard_listener_linux.cpp'
           ],
           'include_dirs': [
             'libuiohook/src/x11'
@@ -76,7 +76,7 @@
             "libuiohook/src/darwin/input_hook.c",
             "libuiohook/src/darwin/post_event.c",
             "libuiohook/src/darwin/system_properties.c",
-            'src/lib/clipboard_listener_mac.c'
+            'src/lib/clipboard_listener_mac.cpp'
           ],
           'include_dirs': [
             'libuiohook/src/darwin'

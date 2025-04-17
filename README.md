@@ -24,8 +24,8 @@ uIOhook.on('keydown', (e) => {
 uIOhook.start()
 
 // clipboard watcher
-uIOhook.on('clipboardChanged', () => {
-  console.log('clipboard changed', clipboard.readText())
+uIOhook.on('clipboardChanged', (text) => {
+  console.log('clipboard changed', text, clipboard.readText())
 })
 
 uIOhook.startListenClipboard()
